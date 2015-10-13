@@ -20,6 +20,9 @@ end
 
 
 group :default do
+  gem 'dotenv-rails'
+  gem 'redis-objects'
+  gem 'twitter'
   gem 'slim-rails'
   gem 'squeel'
   gem 'authlogic'
@@ -28,6 +31,8 @@ group :default do
   gem 'jquery-rails'
   gem 'sweet-alert-confirm'
   gem 'rails_config'
+  gem 'unicorn'
+  gem 'unicorn-worker-killer'
 end
 
 group :development, :test do
