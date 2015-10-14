@@ -7,6 +7,10 @@ class Message
   hash_key :message_set
 
   class << self
+    def all
+      message_store.members.map(&method(:find))
+    end
+
     def find(id)
       raise NotFound unless message_store.member?(id)
       Message.new.restore_from(id)

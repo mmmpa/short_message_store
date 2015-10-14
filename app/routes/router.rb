@@ -3,7 +3,7 @@ get '/' do
 end
 
 get '/messages/index' do
-
+  Message.all.to_json
 end
 
 post '/messages/new' do
