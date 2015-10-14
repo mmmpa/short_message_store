@@ -12,6 +12,14 @@ class Message
       Message.new.restore_from(id)
     end
 
+    def destroy_all
+      message_store.members.map(&method(:destroy))
+    end
+
+    def destroy(id)
+      message_store.delete(id)
+    end
+
     def generate_id
       begin
         # 100000回saveで1度当たる程度なので4でよい
@@ -60,6 +68,10 @@ class Message
     Message.store(self)
     self_to_redis!
     self
+  end
+
+  def destroy!
+    Message.destroy(id)
   end
 
   def id
