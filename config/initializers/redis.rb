@@ -3,7 +3,7 @@ redis = Redis.new(
   port: ENV['REDIS_PORT']
 )
 
-Redis.current = case Rails.env.to_sym
+Redis.current = case ENV['ENV'].to_sym
                   when :development
                     Redis::Namespace.new(:dev, redis: redis)
                   when :test

@@ -57,8 +57,22 @@ class Message
                       end
   end
 
+  def destroy!
+    Message.destroy(id)
+  end
+
+  def id
+    @id
+  end
+
   def invalid?
     message.blank? || written_at.blank?
+  end
+
+  def restore_from(id)
+    @id = id
+    redis_to_self!
+    self
   end
 
   def save!
@@ -70,31 +84,17 @@ class Message
     self
   end
 
-  def destroy!
-    Message.destroy(id)
-  end
-
-  def id
-    @id
-  end
-
-  def restore_from(id)
-    @id = id
-    redis_to_self!
-    self
-  end
-
   private
-
-  def self_to_redis!
-    ATTRIBUTES.each do |key|
-      message_set[key] = send(key)
-    end
-  end
 
   def redis_to_self!
     self.message_set.each do |key, value|
       send("#{key}=", value)
+    end
+  end
+
+  def self_to_redis!
+    ATTRIBUTES.each do |key|
+      message_set[key] = send(key)
     end
   end
 

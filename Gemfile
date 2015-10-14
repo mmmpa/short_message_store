@@ -1,68 +1,19 @@
 source 'https://rubygems.org'
 
+gem 'dotenv-rails'
+gem 'redis-objects'
+gem 'redis-namespace'
+gem 'twitter'
+gem 'slim'
 
-gem 'rails', '4.2.4'
-gem 'pg'
-gem 'sass-rails', '~> 5.0'
-gem 'uglifier', '>= 1.3.0'
+gem 'rspec'
+gem 'rspec-html-matchers'
+gem 'faker'
+gem 'capybara'
+gem 'poltergeist'
+gem 'simplecov'
+gem 'simplecov-rcov'
 
-
-
-
-group :development, :test do
-  gem 'byebug'
-end
-
-group :development do
-  gem 'web-console', '~> 2.0'
-  gem 'spring'
-end
-
-
-group :default do
-  gem 'dotenv-rails'
-  gem 'redis-objects'
-  gem 'redis-namespace'
-  gem 'twitter'
-  gem 'slim-rails'
-  gem 'squeel'
-  gem 'authlogic'
-  gem 'kaminari'
-  gem 'penetration'
-  gem 'jquery-rails'
-  gem 'sweet-alert-confirm'
-  gem 'rails_config'
-  gem 'unicorn'
-  gem 'unicorn-worker-killer'
-end
-
-group :development, :test do
-  gem 'tanemaki'
-  gem 'spring-commands-rspec'
-  gem 'factory_girl_rails'
-end
-
-group :development do
-  gem 'annotate'
-  gem 'brakeman', require: false
-  gem 'quiet_assets'
-  gem 'pry-rails'
-  gem 'pry-byebug'
-  gem 'awesome_print'
-  gem 'rails_best_practices'
-  gem 'hirb'
-  gem 'hirb-unicode'
-  gem 'rb-readline'
-  gem 'rails-erd'
-end
-
-group :test do
-  gem 'rspec'
-  gem 'rspec-rails'
-  gem 'rspec-html-matchers'
-  gem 'faker'
-  gem 'capybara'
-  gem 'poltergeist'
-  gem 'simplecov'
-  gem 'simplecov-rcov'
-end
+gem 'sinatra'
+gem 'sinatra-contrib'
+gem 'sinatra-reloader'

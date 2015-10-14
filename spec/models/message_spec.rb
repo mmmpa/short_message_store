@@ -1,4 +1,4 @@
-require 'rails_helper'
+require 'spec_helper'
 
 RSpec.describe Message, type: :model do
   after :all do
@@ -30,6 +30,16 @@ RSpec.describe Message, type: :model do
 
       it { expect(Message.new(message: raw_message, written_at: nil).save!).to be_a(Message) }
       it { expect(Message.new(message: raw_message, written_at: 'abc').save!).to be_a(Message) }
+
+      context 'then' do
+        it do
+          begin
+            Message.new(message: nil, written_at: raw_time).save!
+          rescue Message::RecordInvalid => e
+            expect(e.record).to be_a(Message)
+          end
+        end
+      end
     end
   end
 
