@@ -22,6 +22,7 @@ end
 group :default do
   gem 'dotenv-rails'
   gem 'redis-objects'
+  gem 'redis-namespace'
   gem 'twitter'
   gem 'slim-rails'
   gem 'squeel'

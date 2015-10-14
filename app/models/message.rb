@@ -4,10 +4,9 @@ class Message
   ATTRIBUTES = [:message, :fail_message, :written_at]
 
   attr_accessor *ATTRIBUTES
-  ATTRIBUTES.each { |name| value "redis_#{name}" }
+  hash_key :message_set
 
   class << self
-
     def find(id)
       raise NotFound unless message_store.member?(id)
       Message.new.restore_from(id)
@@ -15,7 +14,9 @@ class Message
 
     def generate_id
       begin
-        id = SecureRandom.hex(16)
+        # 100000回saveで1度当たる程度なので4でよい
+        # 2だとよく当たる
+        id = SecureRandom.hex(4)
       end while message_store.member?(id)
       id
     end
@@ -31,17 +32,33 @@ class Message
     end
   end
 
-  def initialize(message: nil, fail_message: nil, written_at: nil)
-    @id = id
-    self.message = message
-    self.fail_message = fail_message
-    self.written_at = written_at || Time.now.strftime('%Y/%m/%d %H:%M')
+  def initialize(**args)
+    args.each_pair do |key, value|
+      send("#{key}=", value)
+    end
+
+    adjust_time!
   end
 
-  def save
+  def adjust_time!
+    self.written_at = case
+                        when written_at.is_a?(Time)
+                          written_at.strftime('%Y/%m/%d %H:%M')
+                        else
+                          Time.now.strftime('%Y/%m/%d %H:%M')
+                      end
+  end
+
+  def invalid?
+    message.blank? || written_at.blank?
+  end
+
+  def save!
+    raise RecordInvalid.new(self) if invalid?
+
     @id ||= self.class.generate_id
-    self_to_redis!
     Message.store(self)
+    self_to_redis!
     self
   end
 
@@ -58,14 +75,24 @@ class Message
   private
 
   def self_to_redis!
-    ATTRIBUTES.each do |name|
-      send("redis_#{name}=", send("#{name}"))
+    ATTRIBUTES.each do |key|
+      message_set[key] = send(key)
     end
   end
 
   def redis_to_self!
-    ATTRIBUTES.each do |name|
-      send("#{name}=", send("redis_#{name}").value)
+    self.message_set.each do |key, value|
+      send("#{key}=", value)
+    end
+  end
+
+  class RecordInvalid < StandardError
+    def initialize(record)
+      @record = record
+    end
+
+    def record
+      @record
     end
   end
 
