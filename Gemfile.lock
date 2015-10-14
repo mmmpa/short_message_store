@@ -171,6 +171,7 @@ DEPENDENCIES
   dotenv-rails
   faker
   poltergeist
+  rack
   redis-namespace
   redis-objects
   rspec

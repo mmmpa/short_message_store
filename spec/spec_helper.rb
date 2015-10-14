@@ -8,6 +8,7 @@ require 'rspec-html-matchers'
 require 'simplecov'
 require 'simplecov-rcov'
 require 'pathname'
+require 'rack/test'
 
 =begin
 SimpleCov.formatter = SimpleCov::Formatter::RcovFormatter
@@ -19,6 +20,8 @@ end
 
 
 RSpec.configure do |config|
+  config.include Rack::Test::Methods
+
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
   end

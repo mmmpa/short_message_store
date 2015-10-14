@@ -10,7 +10,8 @@ require 'active_support/core_ext'
 require 'sinatra'
 require 'sinatra/cookies'
 require 'sinatra/reloader' if development?
-
+require 'slim'
+require 'slim/include'
 
 Dotenv.load
 

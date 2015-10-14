@@ -1,0 +1,5 @@
+article.messages
+  ul.messages.list
+    li.messages.message(v-repeat='messages')
+      div.messages.body '{{message}}'
+      time.messages.time '{{written_at}}'

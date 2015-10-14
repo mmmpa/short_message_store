@@ -17,3 +17,5 @@ gem 'simplecov-rcov'
 gem 'sinatra'
 gem 'sinatra-contrib'
 gem 'sinatra-reloader'
+
+gem 'rack'
