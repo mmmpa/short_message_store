@@ -10,11 +10,11 @@ MainComponent = React.createClass(
     ).then((data) =>
       if mode?.mode == 'edit'
         @reject(mode.id)
-      @loadMessages(@state.messages[0]?.id)
+      @loadMessages(@lastId())
       @setState(mode: null, message: '')
     ).fail((data) ->
       console.log(data)
-      @loadMessages(@state.messages[0]?.id)
+      @loadMessages(@lastId())
     )
   loadMessages: (from)->
     data = if from?
@@ -27,7 +27,7 @@ MainComponent = React.createClass(
       dataType: 'json'
       data: data
     ).done((data) =>
-      @setState(messages: data.reverse().concat(@state.messages))
+      @insertNewMessages(data)
     ).fail((data) ->
       console.log(data)
     )
@@ -49,6 +49,7 @@ MainComponent = React.createClass(
   replyMessage: (message)->
     @setState(mode: { mode: 'reply', id: message.id })
   reject: (id)->
+    delete @state.replies[id]
     @setState(messages: _.reject(@state.messages, (obj)->
       obj.id == id
     ))
@@ -57,9 +58,27 @@ MainComponent = React.createClass(
       when 'edit'
         ["/messages/#{mode.id}", { message: message, _method: 'put' }]
       when 'reply'
-        ['/messages/new', { message: message, reply: id }]
+        ['/messages/new', { message: message, reply_to: mode.id }]
       else
         ['/messages/new', { message: message }]
+  insertNewMessages: (messages)->
+    now = @state.messages
+    _.each(messages, (message)=>
+      if @state.replies[message.id]
+
+      else if message.reply_to?
+        @state.replies[message.id] = true
+        point = _.findIndex(now, (target)-> target.id == message.reply_to)
+        if point == -1
+          now.unshift(message)
+        else
+          now = _.slice(now, 0, point + 1).concat(message).concat(_.slice(now, point + 1))
+      else
+        now.unshift(message)
+    )
+    @setState(messages: now)
+  lastId: ->
+    @state.messages[0]?.id
   componentDidMount: ()->
     @loadMessages()
   app: ()->
@@ -71,6 +90,7 @@ MainComponent = React.createClass(
   getInitialState: ()->
     messages: []
     message: ''
+    replies: {}
   render: () ->
     CE('div', { className: "short-message-store" },
       CE(MessageFormComponent, { app: @app(), mode: @state.mode, message: @state.message }),
@@ -100,15 +120,25 @@ MessageComponent = React.createClass(
     @props.app.replyMessage(@props.message)
   render: () ->
     CE('li', { className: "message-list message" },
+      CE('time', { className: "message-list time" }, @props.message.written_at),
       CE('div', {
         className: "message-list body",
         dangerouslySetInnerHTML: { __html: marked(@props.message.message) }
       }),
-      CE('a', { className: "text-primary message-list edit", href: "#", onClick: @edit },
-        CE(Fa, { icon: 'pencil' }),
-        CE('time', { className: "message-list time" }, @props.message.written_at)
+      CE('div', { className: "message-list footer" },
+        CE('a', { className: "text-success message-list reply", href: "#", onClick: @reply },
+          CE(Fa, { icon: 'reply' }),
+          'reply'
+        )
+        CE('a', { className: "text-primary message-list edit", href: "#", onClick: @edit },
+          CE(Fa, { icon: 'pencil' }),
+          'edit'
+        )
+        CE('a', { className: "text-danger message-list delete", href: "#", onClick: @delete },
+          CE(Fa, { icon: 'trash-o' }),
+          'delete'
+        )
       )
-      CE('a', { className: "text-danger message-list delete", href: "#", onClick: @delete }, CE(Fa, { icon: 'trash-o' }))
     )
 )
 

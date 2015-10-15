@@ -1,7 +1,7 @@
 class Message
   include Redis::Objects
 
-  ATTRIBUTES = [:message, :fail_message, :written_at]
+  ATTRIBUTES = [:message, :fail_message, :written_at, :reply_to]
 
   attr_accessor *ATTRIBUTES
   hash_key :message_set
@@ -90,7 +90,8 @@ class Message
     {
       id: id,
       message: message,
-      written_at: written_at
+      written_at: written_at,
+      reply_to: reply_to
     }
   end
 
@@ -100,6 +101,15 @@ class Message
 
   def id
     @id
+  end
+
+  def reply_target_exist?
+    return true if reply_to.blank?
+    begin
+      !!Message.find(reply_to)
+    rescue NotFound
+      false
+    end
   end
 
   def invalid?
@@ -114,6 +124,10 @@ class Message
 
   def save!
     raise RecordInvalid.new(self) if invalid?
+
+    unless reply_target_exist?
+      self.reply_to = nil
+    end
 
     @id ||= self.class.generate_id
     Message.store(self)
