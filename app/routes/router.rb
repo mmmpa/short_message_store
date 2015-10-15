@@ -19,6 +19,11 @@ get '/css/def.css' do
   sass :def
 end
 
+get '/js/app.js' do
+  content_type 'text/javascript', charset: 'utf-8'
+  coffee :react
+end
+
 private
 
 def symbolize_params

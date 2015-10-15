@@ -25,12 +25,7 @@ class Message
     end
 
     def generate_id
-      begin
-        # 100000回saveで1度当たる程度なので4でよい
-        # 2だとよく当たる
-        id = SecureRandom.hex(4)
-      end while message_store.member?(id)
-      id
+      id_generator.increment
     end
 
     def store(message)
@@ -41,6 +36,10 @@ class Message
 
     def message_store
       @stored_message_store ||= Redis::SortedSet.new('messages')
+    end
+
+    def id_generator
+      @stored_id_generator ||= Redis::Counter.new('messages_id')
     end
   end
 
