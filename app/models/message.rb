@@ -126,6 +126,9 @@ class Message
       send("#{key}=", value)
     end
 
+    self.written_at = nil
+    adjust_time!
+
     save!
   end
 
