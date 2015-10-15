@@ -6,7 +6,9 @@ namespace :sweeper do
   desc 'Send all messages to hatena blog as a entry.'
   task :sweep! do
     mailer.delivery_method(:smtp, mailer_config)
+    mailer.body
     mailer.deliver!
+    Redis.current.flushall
   end
 
   def mailer
@@ -19,10 +21,24 @@ namespace :sweeper do
   end
 
   def rendered
-    "このエントリーはShort Message Storeから自動的に投稿される\n\n"
-    messages.map { |message|
+    sorted = []
+    messages.map do |message|
+      if message[:reply_to]
+        target_index = sorted.index { |target| target[:id] == message[:reply_to] }
+        if target_index
+          sorted = sorted[0..(target_index)] + [message] + sorted[(target_index + 1)..sorted.size]
+        else
+          sorted.push(message)
+        end
+      else
+        sorted.push(message)
+      end
+    end
+    "このエントリーはShort Message Storeから自動的に投稿される\n\n" +
+    sorted.map { |message|
+      pp message
       [
-        "# #{message[:written_at]}\n\n",
+        message[:reply_to].present? ? "## ▲ #{message[:written_at]}\n\n" : "# #{message[:written_at]}\n\n",
         message[:message]
       ].join("\n")
     }.join("\n\n")

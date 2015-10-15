@@ -55,7 +55,7 @@ class Message
     end
 
     def store(message)
-      message_store[message.id] = Time.now.to_f * 1000
+      message_store[message.id] = Time.now.to_f
     end
 
     private
