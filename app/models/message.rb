@@ -8,7 +8,33 @@ class Message
 
   class << self
     def all
-      message_store.members.map(&method(:find))
+      message_store.members.map(&method(:find)).map(&:to_hash)
+    end
+
+    def list_after(id)
+      id_list_from(id).tap { |result|
+        result.delete(id)
+      }.map(&method(:find)).map(&:to_hash)
+    end
+
+    def list_from(id)
+      id_list_from(id).map(&method(:find)).map(&:to_hash)
+    end
+
+    def id_list_from(id)
+      message_store.rangebyscore(at(id).to_i, last_at.to_i + 1)
+    end
+
+    def at(id)
+      message_store[id]
+    end
+
+    def last_at
+      message_store[message_store.last]
+    end
+
+    def first_at
+      message_store[message_store.first]
     end
 
     def find(id)
@@ -29,7 +55,7 @@ class Message
     end
 
     def store(message)
-      message_store[message.id] = message.written_at.gsub(/[^0-9]/, '').to_f
+      message_store[message.id] = Time.now.to_f * 1000
     end
 
     private
@@ -58,6 +84,14 @@ class Message
                         else
                           Time.now.strftime('%Y/%m/%d %H:%M')
                       end
+  end
+
+  def to_hash
+    {
+      id: id,
+      message: message,
+      written_at: written_at
+    }
   end
 
   def destroy!

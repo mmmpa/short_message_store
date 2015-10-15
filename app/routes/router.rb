@@ -3,7 +3,11 @@ get '/' do
 end
 
 get '/messages/index' do
-  Message.all.to_json
+  if from_id
+    Message.list_after(from_id).to_json
+  else
+    Message.all.to_json
+  end
 end
 
 post '/messages/new' do
@@ -12,6 +16,7 @@ end
 
 delete '/messages/:id' do |id|
   Message.destroy(id)
+  {id: id}.to_json
 end
 
 get '/css/def.css' do
@@ -32,4 +37,8 @@ end
 
 def message_params
   symbolize_params.slice(:message)
+end
+
+def from_id
+  symbolize_params[:from]
 end

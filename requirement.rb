@@ -12,6 +12,7 @@ require 'sinatra/cookies'
 require 'sinatra/reloader' if development?
 require 'slim'
 require 'slim/include'
+require 'pp'
 
 Dotenv.load
 
