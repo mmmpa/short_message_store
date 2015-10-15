@@ -121,6 +121,14 @@ class Message
     self
   end
 
+  def update!(**args)
+    args.each_pair do |key, value|
+      send("#{key}=", value)
+    end
+
+    save!
+  end
+
   private
 
   def redis_to_self!

@@ -14,6 +14,11 @@ post '/messages/new' do
   Message.new(message_params).save!
 end
 
+put '/messages/:id' do |id|
+  Message.find(id).update!(message_params).to_hash.to_json
+end
+
+
 delete '/messages/:id' do |id|
   Message.destroy(id)
   {id: id}.to_json

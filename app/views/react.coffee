@@ -1,14 +1,23 @@
 CE = React.createElement
 
 MainComponent = React.createClass(
-  postMessage: (message)->
+  postMessage: (message, mode)->
+    [url, data] = switch mode.mode
+      when 'edit'
+        ["/messages/#{mode.id}", { message: message, _method: 'put' }]
+      when 'reply'
+        ['/messages/new', { message: message, reply: id }]
+      else
+        ['/messages/new', { message: message }]
     $.ajax(
-      url: '/messages/new',
-      type: 'post',
-      data:
-        message: message
+      url: url
+      type: 'post'
+      data: data
     ).then((data) =>
+      if mode.mode == 'edit'
+        @reject(mode.id)
       @loadMessages(@state.messages[0]?.id)
+      @setState(mode: null, message: '')
     ).fail((data) ->
       console.log(data)
       @loadMessages(@state.messages[0]?.id)
@@ -28,7 +37,8 @@ MainComponent = React.createClass(
     ).fail((data) ->
       console.log(data)
     )
-  deleteMessage: (id)->
+  deleteMessage: (message)->
+    id = message.id
     $.ajax(
       url: "/messages/#{id}",
       type: 'post',
@@ -37,14 +47,19 @@ MainComponent = React.createClass(
         _method: 'delete'
     ).done((data) =>
       console.log 'deleted'
-      @setState(messages: _.reject(@state.messages, (obj)->
-        obj.id == data.id
-      ))
+      @reject(data.id)
     ).fail((data) ->
       console.log(data)
     )
-  editMessage: (id)->
-  replyMessage: (id)->
+  editMessage: (message)->
+    console.log message
+    @setState(mode: { mode: 'edit', id: message.id }, message: message.message)
+  replyMessage: (message)->
+    @setState(mode: { mode: 'reply', id: message.id })
+  reject: (id)->
+    @setState(messages: _.reject(@state.messages, (obj)->
+      obj.id == id
+    ))
   componentDidMount: ()->
     @loadMessages()
   app: ()->
@@ -55,9 +70,10 @@ MainComponent = React.createClass(
     replyMessage: @replyMessage
   getInitialState: ()->
     messages: []
+    message: ''
   render: () ->
     CE('div', { className: "commentBox" },
-      CE(MessageFormComponent, { app: @app() }),
+      CE(MessageFormComponent, { app: @app(), mode: @state.mode, message: @state.message }),
       CE(MessageListComponent, { app: @app(), messages: @state.messages }),
     )
 )
@@ -66,7 +82,7 @@ MessageListComponent = React.createClass(
   render: () ->
     messages = _.map(@props.messages, (el, i)=>
       CE(MessageComponent,
-        { app: @props.app, id: el.id, message: el.message, written_at: el.written_at }
+        { app: @props.app, message: el }
       )
     )
     CE('ul', { className: "commentBox" }, messages)
@@ -75,17 +91,17 @@ MessageListComponent = React.createClass(
 MessageComponent = React.createClass(
   edit: (e)->
     e.preventDefault()
-    @props.app.editMessage(@props.id)
+    @props.app.editMessage(@props.message)
   delete: (e)->
     e.preventDefault()
-    @props.app.deleteMessage(@props.id)
+    @props.app.deleteMessage(@props.message)
   reply: (e)->
     e.preventDefault()
-    @props.app.replyMessage(@props.id)
+    @props.app.replyMessage(@props.message)
   render: () ->
     CE('li', { className: "commentBox" },
-      CE('div', { className: "messages body" }, @props.message),
-      CE('time', { className: "messages time" }, @props.written_at)
+      CE('div', { className: "messages body" }, @props.message.message),
+      CE('time', { className: "messages time" }, @props.message.written_at)
       CE('a', { className: "text-primary messages edit", href: "#", onClick: @edit }, CE(Fa, { icon: 'pencil' }))
       CE('a', { className: "text-danger messages delete", href: "#", onClick: @delete }, CE(Fa, { icon: 'trash-o' }))
     )
@@ -94,15 +110,36 @@ MessageComponent = React.createClass(
 MessageFormComponent = React.createClass(
   onClick: (e)->
     e.preventDefault()
-    @props.app.postMessage(@textarea().value).then ()=>
-      @textarea().value = ''
-  textarea: ()->
-    ReactDOM.findDOMNode(@refs.messageArea)
+    @props.app.postMessage(@message(), @mode()).then ()=>
+      @setState(message: '')
+  message: ()->
+    ReactDOM.findDOMNode(@refs.messageArea).value
+  mode: ()->
+    [mode, id] = ReactDOM.findDOMNode(@refs.mode).value.split(':')
+    { mode: mode, id: id }
+  modeText: ()->
+    if @props.mode
+      "#{@props.mode.mode}:#{@props.mode.id}"
+    else
+      'new message'
+  statize: (e)->
+    @setState(message: e.target.value)
+  componentWillReceiveProps: (props)->
+    @setState(message: props.message)
+  getInitialState: ()->
+    message: ''
   render: () ->
-    console.log(@props)
     CE('form', { className: "commentBox" },
       CE('div', { className: "control-group" },
-        CE('textarea', { className: "form-control message-box textarea", ref: 'messageArea' })
+        CE('input', { className: "form-control message-box", ref: 'mode', disabled: true, value: @modeText() })
+      ),
+      CE('div', { className: "control-group" },
+        CE('textarea', {
+          className: "form-control message-box textarea",
+          ref: 'messageArea',
+          value: @state.message,
+          onChange: @statize
+        })
       ),
       CE('div', { className: "message-box submit-area" },
         CE('button', { className: "btn btn-primary btn-lg message-box submit", onClick: @onClick },
