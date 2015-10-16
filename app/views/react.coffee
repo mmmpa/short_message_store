@@ -70,15 +70,17 @@ MainComponent = React.createClass(
   reject: (message, children = false)->
     score = _.find(@state.messages, ((obj)-> obj.id == message.id)).score
     detector = if children
-      (objScore, score)->
-        console.log score - 1, objScore, score
-        score - 1 < objScore && objScore <= score
+      parents = {}
+      parents[message.id] = true
+      (obj, score)->
+        if (score - 1 < obj.score && obj.score <= score) && parents[obj.reply_to]
+          parents[obj.id] = true
+          return true
     else
-      (objScore, score)->
-        console.log objScore, score
-        objScore == score
+      (obj, score)->
+        obj.score == score || obj.id == message.id
     @setState(messages: _.reject(@state.messages, (obj)->
-      detector(obj.score, score)
+      detector(obj, score)
     ))
   detectPostParameter: (message, mode = {})->
     switch mode.mode

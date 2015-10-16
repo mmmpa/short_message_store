@@ -118,7 +118,7 @@ RSpec.describe Message, type: :model do
           c.destroy!
           expect(ids).to eq([g.id, f.id, e.id, d.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
           reply_to_c.update!
-          expect(ids).to eq([reply_to_c.id, reply_to_reply_to_c.id,g.id, f.id, e.id, d.id,  b.id, a.id, reply_to_a2.id, reply_to_a.id])
+          expect(ids).to eq([reply_to_c.id, reply_to_reply_to_c.id, g.id, f.id, e.id, d.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
         end
 
         it do
@@ -126,6 +126,38 @@ RSpec.describe Message, type: :model do
           expect(ids).to eq([g.id, f.id, e.id, d.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
           reply_to_reply_to_c.update!
           expect(ids).to eq([g.id, f.id, e.id, d.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
+        end
+
+        context 'has siblings' do
+          let!(:reply_to_c2) { Message.new(message: raw_message, reply_to: c.id).save! }
+          let!(:reply_to_reply_to_c2) { Message.new(message: raw_message, reply_to: reply_to_c2.id).save! }
+
+          before :each do
+            c.destroy!
+          end
+
+          context 'when no edit' do
+            it do
+              expect(ids).to eq([g.id, f.id, e.id, d.id, reply_to_c2.id, reply_to_reply_to_c2.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
+            end
+          end
+
+          context 'when edit' do
+            it 'dont move' do
+              reply_to_reply_to_c.update!
+              expect(ids).to eq([g.id, f.id, e.id, d.id, reply_to_c2.id, reply_to_reply_to_c2.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
+            end
+
+            it do
+              reply_to_c.update!
+              expect(ids).to eq([reply_to_c.id, reply_to_reply_to_c.id, g.id, f.id, e.id, d.id, reply_to_c2.id, reply_to_reply_to_c2.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
+            end
+
+            it do
+              reply_to_c2.update!
+              expect(ids).to eq([reply_to_c2.id, reply_to_reply_to_c2.id, g.id, f.id, e.id, d.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
+            end
+          end
         end
       end
 

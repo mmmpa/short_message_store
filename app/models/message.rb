@@ -99,8 +99,19 @@ class Message
 
     def store(message)
       if message.reply_to.present? && reply_target_exist?(message.reply_to)
+        children = children_of(message.id)
         message_store[message.id] = score_for_reply_to(message.reply_to)
+        parents = Set.new([message.id])
+
+        children.each do |id|
+          target = find(id)
+          if parents.include?(target.reply_to)
+            message_store[target.id] = score_for_reply_to(target.reply_to)
+            parents << id
+          end
+        end
       else
+        message.reply_to = nil
         children = children_of(message.id)
 
         if children.present?
@@ -109,7 +120,6 @@ class Message
           new_score = message_store[message.id] = generate_score!
           plus = new_score - old_score
           children.reverse.each do |id|
-            pp parents
             if parents.include?(find(id).reply_to)
               message_store.increment(id, plus)
               parents << id
