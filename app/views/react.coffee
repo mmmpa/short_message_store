@@ -9,30 +9,23 @@ MainComponent = React.createClass(
       dataType: 'json'
       data: data
     ).then((data) =>
-      now = @state.messages
       switch mode?.mode
         when 'edit'
-          console.log 'edit'
-          myIndex = _.findIndex(now, (target)->
-            target.id == data.id
-          )
-          now[myIndex] = data
-          @setState(message: now)
+          if data.reply_to? && data.reply_to != ''
+# リプライなので本人の移動のみ
+            @reject(data)
+            @insert(data)
+          else
+# 親なので子を含めた大移動
+            @reject(data, true)
+            @loadMessages(@lastScore())
         when 'reply'
-          console.log 'reply'
-          targetIndex = _.findIndex(now, (target)->
-            console.log target.id, data.reply_to
-            target.id == data.reply_to
-          )
-          now = _.slice(now, 0, targetIndex + 1).concat(data).concat(_.slice(now, targetIndex + 1))
-          @setState(messages: now)
+          @insert(data)
         else
-          console.log data
-          @addNewMessages([data])
+          @loadMessages(@lastScore())
       @setState(mode: null, message: '')
     ).fail((data) ->
-      console.log(data)
-      @loadMessages(@lastId())
+      @loadMessages(@lastScore())
     )
   loadMessages: (from)->
     data = if from?
@@ -58,7 +51,7 @@ MainComponent = React.createClass(
       data:
         _method: 'delete'
     ).done((data) =>
-      @reject(data.id)
+      @reject(data)
     ).fail((data) ->
       console.log(data)
     )
@@ -66,10 +59,26 @@ MainComponent = React.createClass(
     @setState(mode: { mode: 'edit', id: message.id }, message: message.message)
   replyMessage: (message)->
     @setState(mode: { mode: 'reply', id: message.id })
-  reject: (id)->
-    delete @state.replies[id]
+  insert: (message)->
+    now = @state.messages
+    targetIndex = _.findIndex(now, (target)->
+      console.log target.score, message.score
+      target.score < message.score
+    )
+    now = _.slice(now, 0, targetIndex).concat(message).concat(_.slice(now, targetIndex))
+    @setState(messages: now)
+  reject: (message, children = false)->
+    score = _.find(@state.messages, ((obj)-> obj.id == message.id)).score
+    detector = if children
+      (objScore, score)->
+        console.log score - 1, objScore, score
+        score - 1 < objScore && objScore <= score
+    else
+      (objScore, score)->
+        console.log objScore, score
+        objScore == score
     @setState(messages: _.reject(@state.messages, (obj)->
-      obj.id == id
+      detector(obj.score, score)
     ))
   detectPostParameter: (message, mode = {})->
     switch mode.mode
@@ -84,6 +93,8 @@ MainComponent = React.createClass(
     @setState(messages: messages.reverse().concat(@state.messages))
   lastId: ->
     @state.messages[0]?.id
+  lastScore: ->
+    @state.messages[0]?.score
   componentDidMount: ()->
     @loadMessages()
   app: ()->
@@ -123,9 +134,14 @@ MessageComponent = React.createClass(
   reply: (e)->
     e.preventDefault()
     @props.app.replyMessage(@props.message)
+  writeHeader: ()->
+    if @props.message?.reply_to != ''
+      '▲' + @props.message.written_at
+    else
+      @props.message.written_at
   render: () ->
     CE('li', { className: "message-list message" },
-      CE('time', { className: "message-list time" }, @props.message.written_at),
+      CE('time', { className: "message-list time" }, @writeHeader()),
       CE('div', {
         className: "message-list body",
         dangerouslySetInnerHTML: { __html: marked(@props.message.message) }

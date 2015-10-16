@@ -106,6 +106,29 @@ RSpec.describe Message, type: :model do
         end
       end
 
+      context 'lost parent' do
+        it do
+          a.destroy!
+          expect(ids).to eq([g.id, f.id, e.id, d.id, c.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, reply_to_a2.id, reply_to_a.id])
+          reply_to_a2.update!
+          expect(ids).to eq([reply_to_a2.id, g.id, f.id, e.id, d.id, c.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, reply_to_a.id])
+        end
+
+        it do
+          c.destroy!
+          expect(ids).to eq([g.id, f.id, e.id, d.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
+          reply_to_c.update!
+          expect(ids).to eq([reply_to_c.id, reply_to_reply_to_c.id,g.id, f.id, e.id, d.id,  b.id, a.id, reply_to_a2.id, reply_to_a.id])
+        end
+
+        it do
+          c.destroy!
+          expect(ids).to eq([g.id, f.id, e.id, d.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
+          reply_to_reply_to_c.update!
+          expect(ids).to eq([g.id, f.id, e.id, d.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
+        end
+      end
+
       context 'reply' do
         it do
           reply_to_c.update!
