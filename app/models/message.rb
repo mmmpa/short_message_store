@@ -58,25 +58,52 @@ class Message
       score_generator.increment
     end
 
+    #そのメッセージの子は、かならずscoreの小数点以下を切り捨てた値に-1のscoreにおさまる
+    #<=での取得になるので、次の親メッセージを含む場合と含まない場合がある
+    def children_of(id)
+      my_score = message_store[id]
+      prev_score = my_score.to_i - 1
+
+      #自分と次の親メッセージを含みうる結果
+      result = message_store.rangebyscore(prev_score, my_score)
+
+      #自分を除去
+      result.pop if message_store[result.last] == my_score
+      #次の親メッセージなら除去
+      result.shift if message_store[result.first] == prev_score
+
+      result
+    end
+
+    def score_for_reply_to(id)
+      base = message_store[id]
+      my_rank = message_store.rank(id)
+      # 最大でも1に抑える
+      next_score = if my_rank == 0
+                     base - 1
+                   else
+                     next_id = message_store[my_rank - 1, 1].first
+                     [base.to_i - 1, message_store[next_id]].max
+                   end
+
+      (base + next_score) / 2
+    end
+
     def store(message)
       if message.reply_to.present?
-        base = message_store[message.reply_to].to_f
-        score_for_reply = base - ((base.to_i + 1).to_f - base) / 2
-        message_store[message.id] = score_for_reply
+        message_store[message.id] = score_for_reply_to(message.reply_to)
       else
-        old_score = message_store[message.id]
-        new_score = message_store[message.id] = generate_score!
+        children = children_of(message.id)
 
-        prev_score = old_score - 1
-
-        if (children = message_store.rangebyscore(prev_score, old_score)).present?
+        if children.present?
+          old_score = message_store[message.id]
+          new_score = message_store[message.id] = generate_score!
           plus = new_score - old_score
-          if message_store[children.first] == prev_score
-            children.shift
-          end
           children.each do |id|
             message_store.increment(id, plus)
           end
+        else
+          message_store[message.id] = generate_score!
         end
       end
     end

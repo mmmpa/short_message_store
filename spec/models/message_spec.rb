@@ -114,7 +114,7 @@ RSpec.describe Message, type: :model do
 
         it do
           reply_to_a.update!
-          expect(ids).to eq([g.id, f.id, e.id, d.id, c.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a2.id, reply_to_a.id])
+          expect(ids).to eq([g.id, f.id, e.id, d.id, c.id, reply_to_c.id, reply_to_reply_to_c.id, b.id, a.id, reply_to_a.id, reply_to_a2.id])
         end
       end
     end
