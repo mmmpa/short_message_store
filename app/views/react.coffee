@@ -6,11 +6,29 @@ MainComponent = React.createClass(
     $.ajax(
       url: url
       type: 'post'
+      dataType: 'json'
       data: data
     ).then((data) =>
-      if mode?.mode == 'edit'
-        @reject(mode.id)
-      @loadMessages(@lastId())
+      now = @state.messages
+      switch mode?.mode
+        when 'edit'
+          console.log 'edit'
+          myIndex = _.findIndex(now, (target)->
+            target.id == data.id
+          )
+          now[myIndex] = data
+          @setState(message: now)
+        when 'reply'
+          console.log 'reply'
+          targetIndex = _.findIndex(now, (target)->
+            console.log target.id, data.reply_to
+            target.id == data.reply_to
+          )
+          now = _.slice(now, 0, targetIndex + 1).concat(data).concat(_.slice(now, targetIndex + 1))
+          @setState(messages: now)
+        else
+          console.log data
+          @addNewMessages([data])
       @setState(mode: null, message: '')
     ).fail((data) ->
       console.log(data)
@@ -27,7 +45,7 @@ MainComponent = React.createClass(
       dataType: 'json'
       data: data
     ).done((data) =>
-      @insertNewMessages(data)
+      @addNewMessages(data)
     ).fail((data) ->
       console.log(data)
     )
@@ -61,22 +79,9 @@ MainComponent = React.createClass(
         ['/messages/new', { message: message, reply_to: mode.id }]
       else
         ['/messages/new', { message: message }]
-  insertNewMessages: (messages)->
-    now = @state.messages
-    _.each(messages, (message)=>
-      if @state.replies[message.id]
-
-      else if message.reply_to?
-        @state.replies[message.id] = true
-        point = _.findIndex(now, (target)-> target.id == message.reply_to)
-        if point == -1
-          now.unshift(message)
-        else
-          now = _.slice(now, 0, point + 1).concat(message).concat(_.slice(now, point + 1))
-      else
-        now.unshift(message)
-    )
-    @setState(messages: now)
+  addNewMessages: (messages)->
+    console.log messages
+    @setState(messages: messages.reverse().concat(@state.messages))
   lastId: ->
     @state.messages[0]?.id
   componentDidMount: ()->

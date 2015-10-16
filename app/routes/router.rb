@@ -10,8 +10,16 @@ get '/messages/index' do
   end
 end
 
+get '/messages/index.json' do
+  if from_id
+    Message.list_after(from_id).to_json
+  else
+    Message.all.to_json
+  end
+end
+
 post '/messages/new' do
-  Message.new(message_params).save!
+  Message.new(message_params).save!.to_hash.to_json
 end
 
 put '/messages/:id' do |id|

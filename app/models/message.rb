@@ -50,12 +50,35 @@ class Message
       message_store.delete(id)
     end
 
-    def generate_id
-      id_generator.increment
+    def generate_id!
+      id_generator.increment.to_s
+    end
+
+    def generate_score!
+      score_generator.increment
     end
 
     def store(message)
-      message_store[message.id] = Time.now.to_f
+      if message.reply_to.present?
+        base = message_store[message.reply_to].to_f
+        score_for_reply = base - ((base.to_i + 1).to_f - base) / 2
+        message_store[message.id] = score_for_reply
+      else
+        old_score = message_store[message.id]
+        new_score = message_store[message.id] = generate_score!
+
+        prev_score = old_score - 1
+
+        if (children = message_store.rangebyscore(prev_score, old_score)).present?
+          plus = new_score - old_score
+          if message_store[children.first] == prev_score
+            children.shift
+          end
+          children.each do |id|
+            message_store.increment(id, plus)
+          end
+        end
+      end
     end
 
     private
@@ -66,6 +89,10 @@ class Message
 
     def id_generator
       @stored_id_generator ||= Redis::Counter.new('messages_id')
+    end
+
+    def score_generator
+      @stored_score_generator ||= Redis::Counter.new('messages_score')
     end
   end
 
@@ -89,6 +116,7 @@ class Message
   def to_hash
     {
       id: id,
+      score: Message.at(id),
       message: message,
       written_at: written_at,
       reply_to: reply_to
@@ -122,6 +150,10 @@ class Message
     self
   end
 
+  def children
+    Message.children_of(id)
+  end
+
   def save!
     raise RecordInvalid.new(self) if invalid?
 
@@ -129,7 +161,7 @@ class Message
       self.reply_to = nil
     end
 
-    @id ||= self.class.generate_id
+    @id ||= self.class.generate_id!
     Message.store(self)
     self_to_redis!
     self
