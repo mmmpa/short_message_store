@@ -75,15 +75,19 @@ class Message
       result
     end
 
+    def next_parent_score(score)
+      score.ceil - 1
+    end
+
     def score_for_reply_to(id)
       base = message_store[id]
       my_rank = message_store.rank(id)
-      # 最大でも1に抑える
+      #最大でも1に抑える
       next_score = if my_rank == 0
-                     base - 1
+                     next_parent_score(base)
                    else
                      next_id = message_store[my_rank - 1, 1].first
-                     [base.to_i - 1, message_store[next_id]].max
+                     [next_parent_score(base), message_store[next_id]].max
                    end
 
       (base + next_score) / 2
