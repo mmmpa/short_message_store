@@ -226,9 +226,46 @@ RSpec.describe Message, type: :model do
         end
       end
     end
+
+    describe 'Get replies' do
+      before :each do
+        @br1 = Message.new(message: 'reply', reply_to: b.id).save!
+        @br1r1 = Message.new(message: 'reply', reply_to: @br1.id).save!
+        @dr1 = Message.new(message: 'reply', reply_to: d.id).save!
+        @dr2 = Message.new(message: 'reply', reply_to: d.id).save!
+        @dr2r1 = Message.new(message: 'reply', reply_to: @dr2.id).save!
+        expect(ids).to eq([d.id, @dr2.id, @dr2r1.id, @dr1.id, c.id, b.id, @br1.id, @br1r1.id, a.id])
+      end
+
+      it do
+        expect(Message.reply_ids(c.id)).to match_array([])
+      end
+
+      it do
+        expect(Message.reply_ids(d.id)).to match_array([@dr2.id, @dr2r1.id, @dr1.id])
+      end
+
+      it do
+        expect(Message.reply_ids(b.id)).to match_array([@br1.id, @br1r1.id])
+      end
+
+      it do
+        expect(Message.reply_ids(@br1.id)).to match_array([@br1r1.id])
+      end
+
+      context 'NOT include siblings' do
+        it do
+          expect(Message.reply_ids(@dr2.id)).to match_array([@dr2r1.id])
+        end
+
+        it do
+          expect(Message.reply_ids(@dr1.id)).to match_array([])
+        end
+      end
+    end
   end
 end
 
 def ids
-  Message.all.map { |message| message[:id] }.reverse
+  Message.all.map { |message| message.id }.reverse
 end

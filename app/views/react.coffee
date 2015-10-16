@@ -11,22 +11,28 @@ MainComponent = React.createClass(
     ).then((data) =>
       switch mode?.mode
         when 'edit'
-          if data.reply_to? && data.reply_to != ''
-# リプライなので本人の移動のみ
-            @reject(data)
-            @insert(data)
-          else
-# 親なので子を含めた大移動
-            @reject(data, true)
-            @loadMessages(@lastScore())
+          @reject(data)
+          @insert(data)
+          @moveReplies(data)
         when 'reply'
           @insert(data)
         else
           @loadMessages(@lastScore())
       @setState(mode: null, message: '')
-    ).fail((data) ->
+    ).fail((data) =>
       @loadMessages(@lastScore())
     )
+  moveReplies: (message)->
+    $.ajax(
+      url: "replies/#{message.id}",
+      type: 'get',
+      dataType: 'json'
+    ).done((data) =>
+      _.each(data, (reply)=>
+        @reject(reply)
+        @insert(reply)
+      )
+    ).fail((data) ->)
   loadMessages: (from)->
     data = if from?
       { from: from }
@@ -39,9 +45,7 @@ MainComponent = React.createClass(
       data: data
     ).done((data) =>
       @addNewMessages(data)
-    ).fail((data) ->
-      console.log(data)
-    )
+    ).fail((data) ->)
   deleteMessage: (message)->
     id = message.id
     $.ajax(
@@ -52,9 +56,7 @@ MainComponent = React.createClass(
         _method: 'delete'
     ).done((data) =>
       @reject(data)
-    ).fail((data) ->
-      console.log(data)
-    )
+    ).fail((data) ->)
   editMessage: (message)->
     @setState(mode: { mode: 'edit', id: message.id }, message: message.message)
   replyMessage: (message)->
@@ -62,25 +64,13 @@ MainComponent = React.createClass(
   insert: (message)->
     now = @state.messages
     targetIndex = _.findIndex(now, (target)->
-      console.log target.score, message.score
       target.score < message.score
     )
     now = _.slice(now, 0, targetIndex).concat(message).concat(_.slice(now, targetIndex))
     @setState(messages: now)
-  reject: (message, children = false)->
-    score = _.find(@state.messages, ((obj)-> obj.id == message.id)).score
-    detector = if children
-      parents = {}
-      parents[message.id] = true
-      (obj, score)->
-        if (score - 1 < obj.score && obj.score <= score) && parents[obj.reply_to]
-          parents[obj.id] = true
-          return true
-    else
-      (obj, score)->
-        obj.score == score || obj.id == message.id
+  reject: (message)->
     @setState(messages: _.reject(@state.messages, (obj)->
-      detector(obj, score)
+      obj.id == message.id
     ))
   detectPostParameter: (message, mode = {})->
     switch mode.mode
@@ -137,7 +127,7 @@ MessageComponent = React.createClass(
     e.preventDefault()
     @props.app.replyMessage(@props.message)
   writeHeader: ()->
-    if @props.message?.reply_to != ''
+    if @props.message.reply_to && @props.message.reply_to != ''
       '▲' + @props.message.written_at
     else
       @props.message.written_at

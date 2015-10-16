@@ -8,17 +8,39 @@ class Message
 
   class << self
     def all
-      message_store.members.map(&method(:find)).map(&:to_hash)
+      message_store.members.map(&method(:find))
     end
 
     def list_after(score)
       id_list_from(score).tap { |result|
         result.delete(id_by_score(score))
-      }.map(&method(:find)).map(&:to_hash)
+      }.map(&method(:find))
     end
 
     def list_from(score)
-      id_list_from(score).map(&method(:find)).map(&:to_hash)
+      id_list_from(score).map(&method(:find))
+    end
+
+    def replies(id)
+      score = at(id)
+      result = message_store.rangebyscore(score.to_i - 1, score).reverse
+      result.delete(id_by_score(score))
+      result.delete(id_by_score(score.to_i - 1))
+
+      parents = Set.new([id_by_score(score)])
+      result.map { |result_id|
+        target = find(result_id)
+        if parents.include?(target.reply_to)
+          parents << target.id
+          target
+        else
+          nil
+        end
+      }.compact
+    end
+
+    def reply_ids(id)
+      replies(id).map(&:id)
     end
 
     def id_by_score(score)
@@ -41,9 +63,14 @@ class Message
       message_store[message_store.first]
     end
 
-    def find(id)
+    def exist?(id)
       raise NotFound unless message_store.member?(id)
-      Message.new.restore_from(id)
+
+      true
+    end
+
+    def find(id)
+      Message.new.restore_from(id) if exist?(id)
     end
 
     def destroy_all
@@ -60,23 +87,6 @@ class Message
 
     def generate_score!
       score_generator.increment
-    end
-
-    #そのメッセージの子は、かならずscoreの小数点以下を切り捨てた値に-1のscoreにおさまる
-    #<=での取得になるので、次の親メッセージを含む場合と含まない場合がある
-    def children_of(id)
-      my_score = message_store[id]
-      prev_score = my_score.to_i - 1
-
-      #自分と次の親メッセージを含みうる結果
-      result = message_store.rangebyscore(prev_score, my_score)
-
-      #自分を除去
-      result.pop if message_store[result.last] == my_score
-      #次の親メッセージなら除去
-      result.shift if message_store[result.first] == prev_score
-
-      result
     end
 
     def next_parent_score(score)
@@ -99,31 +109,22 @@ class Message
 
     def store(message)
       if message.reply_to.present? && reply_target_exist?(message.reply_to)
-        children = children_of(message.id)
+        children = replies(message.id)
         message_store[message.id] = score_for_reply_to(message.reply_to)
-        parents = Set.new([message.id])
 
-        children.each do |id|
-          target = find(id)
-          if parents.include?(target.reply_to)
-            message_store[target.id] = score_for_reply_to(target.reply_to)
-            parents << id
-          end
+        children.each do |target|
+          message_store[target.id] = score_for_reply_to(target.reply_to)
         end
       else
         message.reply_to = nil
-        children = children_of(message.id)
+        children = replies(message.id)
 
         if children.present?
-          parents = Set.new([message.id])
           old_score = message_store[message.id]
           new_score = message_store[message.id] = generate_score!
           plus = new_score - old_score
-          children.reverse.each do |id|
-            if parents.include?(find(id).reply_to)
-              message_store.increment(id, plus)
-              parents << id
-            end
+          children.each do |reply|
+            message_store.increment(reply.id, plus)
           end
         else
           message_store[message.id] = generate_score!
@@ -134,7 +135,7 @@ class Message
     def reply_target_exist?(id)
       return true if id.blank?
       begin
-        !!Message.find(id)
+        exist?(id)
       rescue NotFound
         false
       end
@@ -175,11 +176,15 @@ class Message
   def to_hash
     {
       id: id,
-      score: Message.at(id),
+      score: score,
       message: message,
       written_at: written_at,
       reply_to: reply_to
     }
+  end
+
+  def score
+    Message.at(id)
   end
 
   def destroy!
@@ -190,10 +195,6 @@ class Message
     @id
   end
 
-  def reply_target_exist?
-    Message.reply_target_exist?(reply_to)
-  end
-
   def invalid?
     message.blank? || written_at.blank?
   end
@@ -202,10 +203,6 @@ class Message
     @id = id
     redis_to_self!
     self
-  end
-
-  def children
-    Message.children_of(id)
   end
 
   def save!

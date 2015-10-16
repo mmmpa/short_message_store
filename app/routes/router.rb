@@ -4,32 +4,27 @@ end
 
 get '/messages/index' do
   if from_id
-    Message.list_after(from_id).to_json
+    Message.list_after(from_id).map(&:to_hash).to_json
   else
-    Message.all.to_json
-  end
-end
-
-get '/messages/index.json' do
-  if from_id
-    Message.list_after(from_id).to_json
-  else
-    Message.all.to_json
+    Message.all.map(&:to_hash).to_json
   end
 end
 
 post '/messages/new' do
-  Message.new(message_params).save!.to_hash.to_json
+  Message.new(message_params).save!.to_json
 end
 
 put '/messages/:id' do |id|
-  Message.find(id).update!(message_params).to_hash.to_json
+  Message.find(id).update!(message_params).to_json
 end
-
 
 delete '/messages/:id' do |id|
   Message.destroy(id)
   {id: id}.to_json
+end
+
+get '/replies/:id' do |id|
+  Message.replies(id).to_json
 end
 
 get '/css/def.css' do
@@ -49,7 +44,7 @@ def symbolize_params
 end
 
 def message_params
-  pp symbolize_params.slice(:message, :reply_to)
+  symbolize_params.slice(:message, :reply_to)
 end
 
 def from_id
