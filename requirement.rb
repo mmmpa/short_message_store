@@ -3,7 +3,6 @@ require Pathname(__dir__) + 'config/initializers/common_constants'
 require 'redis'
 require 'redis-namespace'
 require 'redis-objects'
-require 'twitter'
 require 'dotenv'
 require 'active_support'
 require 'active_support/core_ext'
@@ -12,6 +11,8 @@ require 'sinatra/cookies'
 require 'sinatra/reloader' if development?
 require 'slim'
 require 'slim/include'
+require 'coffee_script'
+require 'sass'
 require 'pp'
 
 Dotenv.load
