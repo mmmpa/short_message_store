@@ -6,6 +6,7 @@ gem 'redis-namespace'
 gem 'coffee-script'
 gem 'sass'
 gem 'slim'
+gem 'puma'
 
 gem 'rspec'
 gem 'rspec-html-matchers'

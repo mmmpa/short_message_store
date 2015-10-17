@@ -58,6 +58,7 @@ GEM
       cliver (~> 0.3.1)
       multi_json (~> 1.0)
       websocket-driver (>= 0.2.0)
+    puma (2.14.0)
     rack (1.6.4)
     rack-protection (1.5.3)
       rack
@@ -143,6 +144,7 @@ DEPENDENCIES
   dotenv-rails
   faker
   poltergeist
+  puma
   rack
   redis-namespace
   redis-objects
