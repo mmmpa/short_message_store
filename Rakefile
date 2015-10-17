@@ -2,7 +2,6 @@ require './requirement'
 require 'mail'
 
 namespace :sweeper do
-
   desc 'Send all messages to your address, then Sweep all messages.'
   task :send_and_sweep! do
     send_mail

@@ -62,7 +62,7 @@ class Message
     end
 
     #
-    # id
+    # return id
     #
 
     def id_by_score(score)
@@ -82,7 +82,7 @@ class Message
     end
 
     #
-    # score
+    # return score
     #
 
     def at(id)
