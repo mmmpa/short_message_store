@@ -159,7 +159,7 @@ MessageComponent = React.createClass(
       @props.message.written_at
 
   render: () ->
-    CE('li', { className: "message-list message" },
+    CE('li', { className: "message-list message col-xs-12 col-md-6 col-lg-4" },
       CE('time', { className: "message-list time" }, @writeHeader()),
       CE('div', {
         className: "message-list body",
