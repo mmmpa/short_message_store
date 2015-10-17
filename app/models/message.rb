@@ -7,90 +7,98 @@ class Message
   hash_key :message_set
 
   class << self
+
+    #
+    # return instance
+    #
+    # 取得用の引数はidで統一
+    #
+
+    def create!(**args)
+      new(**args).save!
+    end
+
     def all
       message_store.members.map(&method(:find))
     end
 
-    def list_after(score)
-      id_list_from(score).tap { |result|
-        result.delete(id_by_score(score))
-      }.map(&method(:find))
-    end
-
-    def list_from(score)
-      id_list_from(score).map(&method(:find))
-    end
-
-    def replies(id)
+    #idの主から次の親までを取得
+    def between_next_parent_and(id)
       score = at(id)
-      result = message_store.rangebyscore(score.to_i - 1, score).reverse
-      result.delete(id_by_score(score))
-      result.delete(id_by_score(score.to_i - 1))
-
-      parents = Set.new([id_by_score(score)])
-      result.map { |result_id|
-        target = find(result_id)
-        if parents.include?(target.reply_to)
-          parents << target.id
-          target
-        else
-          nil
-        end
-      }.compact
-    end
-
-    def reply_ids(id)
-      replies(id).map(&:id)
-    end
-
-    def id_by_score(score)
-      message_store.rangebyscore(score, score).first
-    end
-
-    def id_list_from(score)
-      message_store.rangebyscore(score, last_at + 1)
-    end
-
-    def at(id)
-      message_store[id]
-    end
-
-    def last_at
-      message_store[message_store.last]
-    end
-
-    def first_at
-      message_store[message_store.first]
-    end
-
-    def exist?(id)
-      raise NotFound unless message_store.member?(id)
-
-      true
+      message_store.rangebyscore(score.to_i - 1, score).reverse
     end
 
     def find(id)
       Message.new.restore_from(id) if exist?(id)
     end
 
-    def destroy_all
-      message_store.members.map(&method(:destroy))
+    # idの主を含まない
+    def after(id)
+      ids_from(id).tap { |result|
+        result.delete(id)
+      }.map(&method(:find))
     end
 
-    def destroy(id)
-      message_store.delete(id)
+    # idの主を含む
+    def from(id)
+      ids_from(id).map(&method(:find))
     end
 
-    def generate_id!
-      id_generator.increment.to_s
+    def replies(id)
+      # 自分から次の親までのidを取得し、自分と次の親は削除する
+      result = between_next_parent_and(id)
+      result.delete(id)
+      result.delete(next_parent_id(id))
+
+      # 自分に対するreplyと、取得した子に対するreplyのみにする
+      reply_targets = Set.new([id])
+      result.inject([]) do |a, result_id|
+        target = find(result_id)
+        return a unless reply_targets.include?(target.reply_to)
+
+        reply_targets << target.id
+        a << target
+      end
     end
 
-    def generate_score!
-      score_generator.increment
+    #
+    # id
+    #
+
+    def id_by_score(score)
+      message_store.rangebyscore(score, score).first
     end
 
-    def next_parent_score(score)
-      score.ceil - 1
+    def ids_from(id)
+      message_store.rangebyscore(at(id), last_at + 1)
+    end
+
+    def next_parent_id(id)
+      id_by_score(next_parent_score(id))
+    end
+
+    def reply_ids(id)
+      replies(id).map(&:id)
+    end
+
+    #
+    # score
+    #
+
+    def at(id)
+      message_store[id]
+    end
+
+    def first_at
+      message_store[message_store.first]
+    end
+
+    def last_at
+      message_store[message_store.last]
+    end
+
+    def next_parent_score(id)
+      message_store[id].ceil - 1
     end
 
     def score_for_reply_to(id)
@@ -98,13 +106,25 @@ class Message
       my_rank = message_store.rank(id)
       #最大でも1に抑える
       next_score = if my_rank == 0
-                     next_parent_score(base)
+                     next_parent_score(id)
                    else
                      next_id = message_store[my_rank - 1, 1].first
-                     [next_parent_score(base), message_store[next_id]].max
+                     [next_parent_score(id), message_store[next_id]].max
                    end
 
       (base + next_score) / 2
+    end
+
+    #
+    # for persistence
+    #
+
+    def generate_id!
+      id_generator.increment.to_s
+    end
+
+    def generate_score!
+      score_generator.increment
     end
 
     def store(message)
@@ -132,6 +152,24 @@ class Message
       end
     end
 
+    def destroy!(id)
+      message_store.delete(id) || (raise CannotDestroy)
+    end
+
+    def destroy_all!
+      message_store.members.map(&method(:destroy!))
+    end
+
+    #
+    # checker
+    #
+
+    def exist?(id)
+      raise NotFound unless message_store.member?(id)
+
+      true
+    end
+
     def reply_target_exist?(id)
       return true if id.blank?
       begin
@@ -142,6 +180,10 @@ class Message
     end
 
     private
+
+    #
+    # redis management
+    #
 
     def message_store
       @stored_message_store ||= Redis::SortedSet.new('messages')
@@ -156,6 +198,10 @@ class Message
     end
   end
 
+  #
+  # instance method
+  #
+
   def initialize(**args)
     args.each_pair do |key, value|
       send("#{key}=", value)
@@ -164,31 +210,8 @@ class Message
     adjust_time!
   end
 
-  def adjust_time!
-    self.written_at = case
-                        when written_at.is_a?(Time)
-                          written_at.strftime('%Y/%m/%d %H:%M')
-                        else
-                          Time.now.strftime('%Y/%m/%d %H:%M')
-                      end
-  end
-
-  def to_hash
-    {
-      id: id,
-      score: score,
-      message: message,
-      written_at: written_at,
-      reply_to: reply_to
-    }
-  end
-
-  def score
-    Message.at(id)
-  end
-
   def destroy!
-    Message.destroy(id)
+    Message.destroy!(id)
   end
 
   def id
@@ -214,6 +237,20 @@ class Message
     self
   end
 
+  def score
+    Message.at(id)
+  end
+
+  def to_hash
+    {
+      id: id,
+      score: score,
+      message: message,
+      written_at: written_at,
+      reply_to: reply_to
+    }
+  end
+
   def update!(**args)
     args.each_pair do |key, value|
       send("#{key}=", value)
@@ -226,6 +263,15 @@ class Message
   end
 
   private
+
+  def adjust_time!
+    self.written_at = case
+                        when written_at.is_a?(Time)
+                          written_at.strftime('%Y/%m/%d %H:%M')
+                        else
+                          Time.now.strftime('%Y/%m/%d %H:%M')
+                      end
+  end
 
   def redis_to_self!
     self.message_set.each do |key, value|
@@ -250,6 +296,10 @@ class Message
   end
 
   class NotFound < StandardError
+
+  end
+
+  class CannotDestroy < StandardError
 
   end
 end

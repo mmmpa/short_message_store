@@ -4,7 +4,7 @@ end
 
 get '/messages/index' do
   if from_id
-    Message.list_after(from_id).map(&:to_hash).to_json
+    Message.after(from_id).map(&:to_hash).to_json
   else
     Message.all.map(&:to_hash).to_json
   end

@@ -17,10 +17,10 @@ MainComponent = React.createClass(
         when 'reply'
           @insert(data)
         else
-          @loadMessages(@lastScore())
+          @loadMessages(@lastId())
       @setState(mode: null, message: '')
     ).fail((data) =>
-      @loadMessages(@lastScore())
+      @loadMessages(@lastId())
     )
   moveReplies: (message)->
     $.ajax(

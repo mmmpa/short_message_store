@@ -2,13 +2,13 @@ require 'spec_helper'
 
 RSpec.describe Message, type: :model do
   before :each do
-    Message.destroy_all
+    Message.destroy_all!
   end
 
   let(:raw_message) { SecureRandom.hex(8) }
   let(:raw_time) { Time.now }
 
-  describe 'Do save' do
+  describe 'Save!' do
     context 'with valid params' do
       let(:message) { Message.new(message: raw_message, written_at: raw_time) }
 
@@ -41,6 +41,32 @@ RSpec.describe Message, type: :model do
     end
   end
 
+  describe 'Create!' do
+    context 'with valid params' do
+      let(:message) { Message.create!(message: raw_message, written_at: raw_time) }
+
+      it { expect(Message.find(message.id).message).to eq(raw_message) }
+      it { expect(Message.find(message.id).written_at).to eq(raw_time.strftime('%Y/%m/%d %H:%M')) }
+    end
+
+    context 'with invalid params' do
+      it { expect { Message.create!(message: '', written_at: raw_time) }.to raise_error(Message::RecordInvalid) }
+      it { expect { Message.create!(message: nil, written_at: raw_time) }.to raise_error(Message::RecordInvalid) }
+
+      it { expect(Message.create!(message: raw_message, written_at: nil)).to be_a(Message) }
+      it { expect(Message.create!(message: raw_message, written_at: 'abc')).to be_a(Message) }
+
+      context 'then' do
+        it do
+          begin
+            Message.create!(message: nil, written_at: raw_time)
+          rescue Message::RecordInvalid => e
+            expect(e.record).to be_a(Message)
+          end
+        end
+      end
+    end
+  end
 
   describe 'Do find' do
     let(:message) { Message.new(message: raw_message, written_at: raw_time).save! }
@@ -54,7 +80,7 @@ RSpec.describe Message, type: :model do
     let(:message) { Message.new(message: raw_message, written_at: raw_time).save! }
 
     context 'with valid id' do
-      it { expect(Message.destroy(message.id)).to be_truthy }
+      it { expect(Message.destroy!(message.id)).to be_truthy }
       it { expect(message.destroy!).to be_truthy }
 
       context 'then' do
@@ -67,7 +93,7 @@ RSpec.describe Message, type: :model do
     end
 
     context 'with invalid id' do
-      it { expect(Message.destroy('not exist')).to be_falsey }
+      it { expect { Message.destroy!('not exist') }.to raise_error(Message::CannotDestroy) }
     end
   end
 
@@ -176,10 +202,6 @@ RSpec.describe Message, type: :model do
   end
 
   describe 'Reply' do
-    before :each do
-      Message.destroy_all
-    end
-
     let!(:a) { Message.new(message: raw_message).save! }
     let!(:b) { Message.new(message: raw_message).save! }
     let!(:c) { Message.new(message: raw_message).save! }

@@ -3,12 +3,26 @@ require 'mail'
 
 namespace :sweeper do
 
-  desc 'Send all messages to hatena blog as a entry.'
+  desc 'Send all messages to your address, then Sweep all messages.'
+  task :send_and_sweep! do
+    send_mail
+    Redis.current.flushall
+  end
+
+  desc 'Sweep all messages.'
   task :sweep! do
+    Redis.current.flushall
+  end
+
+  desc 'Send all messages to your address.'
+  task :send do
+    send_mail
+  end
+
+  def send_mail
     mailer.delivery_method(:smtp, mailer_config)
     mailer.body
     mailer.deliver!
-    Redis.current.flushall
   end
 
   def mailer
@@ -21,25 +35,15 @@ namespace :sweeper do
   end
 
   def rendered
-    sorted = []
-    messages.map do |message|
-      if message[:reply_to]
-        target_index = sorted.index { |target| target[:id] == message[:reply_to] }
-        if target_index
-          sorted = sorted[0..(target_index)] + [message] + sorted[(target_index + 1)..sorted.size]
-        else
-          sorted.push(message)
-        end
-      else
-        sorted.push(message)
-      end
-    end
-    "このエントリーはShort Message Storeから自動的に投稿される\n\n" +
-    sorted.map { |message|
-      pp message
+    messages.select { |message|
+      message.reply_to.blank?
+    }.inject([]) { |a, parent|
+      a << parent
+      a + Message.replies(parent.id)
+    }.map { |message|
       [
-        message[:reply_to].present? ? "## ▲ #{message[:written_at]}\n\n" : "# #{message[:written_at]}\n\n",
-        message[:message]
+        message.reply_to.present? ? "## ▲ #{message.written_at}\n\n" : "# #{message.written_at}\n\n",
+        message.message
       ].join("\n")
     }.join("\n\n")
   end
@@ -65,7 +69,7 @@ namespace :sweeper do
   end
 
   def title
-    "メモ#{message_size}枚（#{messages.first[:written_at]}～#{messages.last[:written_at]}）まとめ"
+    "メモ#{message_size}枚（#{messages.first.written_at}～#{messages.last.written_at}）まとめ"
   end
 
   def from_address
