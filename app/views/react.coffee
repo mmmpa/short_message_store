@@ -72,7 +72,14 @@ MainComponent = React.createClass(
     targetIndex = _.findIndex(now, (target)->
       target.score < message.score
     )
-    now = _.slice(now, 0, targetIndex).concat(message).concat(_.slice(now, targetIndex))
+    switch
+      when targetIndex == 0
+        now.unshift(message)
+      when targetIndex == - 1
+        now.push(message)
+      else
+        now = _.slice(now, 0, targetIndex).concat(message).concat(_.slice(now, targetIndex))
+
     @setState(messages: now)
 
   reject: (message)->
@@ -134,6 +141,7 @@ MessageComponent = React.createClass(
   edit: (e)->
     e.preventDefault()
     @props.app.editMessage(@props.message)
+    window.scroll(0,0)
 
   delete: (e)->
     e.preventDefault()
@@ -142,6 +150,7 @@ MessageComponent = React.createClass(
   reply: (e)->
     e.preventDefault()
     @props.app.replyMessage(@props.message)
+    window.scroll(0,0)
 
   writeHeader: ()->
     if @props.message.reply_to && @props.message.reply_to != ''
@@ -185,10 +194,23 @@ MessageFormComponent = React.createClass(
       'new message'
 
   statize: (e)->
-    @setState(message: e.target.value)
+    @setState(message: e.doc.getValue())
+
+  codeMirrorConfig: ()->
+    lineNumbers: true
+    mode: 'gfm',
+    lineWrapping: true
+    placeholder: 'メッセージを入力'
+    theme: 'summerfruit'
 
   componentWillReceiveProps: (props)->
     @setState(message: props.message)
+    @cm.doc.setValue(props.message)
+
+  componentDidMount: ->
+    @cm = CodeMirror.fromTextArea(@refs.messageArea.getDOMNode(), @codeMirrorConfig())
+    @cm.on('change', @statize)
+    @cm.setSize('100%','100%')
 
   getInitialState: ()->
     message: ''
@@ -196,14 +218,12 @@ MessageFormComponent = React.createClass(
   render: () ->
     CE('form', { className: "message-box form" },
       CE('div', { className: "control-group" },
-        CE('input', { className: "form-control message-box", ref: 'mode', disabled: true, value: @modeText() })
+        CE('input', { className: "form-control message-box mode", ref: 'mode', disabled: true, value: @modeText() })
       ),
       CE('div', { className: "control-group" },
         CE('textarea', {
           className: "form-control message-box textarea",
-          ref: 'messageArea',
-          value: @state.message,
-          onChange: @statize
+          ref: 'messageArea'
         })
       ),
       CE('div', { className: "message-box submit-area" },
