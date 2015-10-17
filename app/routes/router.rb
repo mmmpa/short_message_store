@@ -19,7 +19,7 @@ put '/messages/:id' do |id|
 end
 
 delete '/messages/:id' do |id|
-  Message.destroy(id)
+  Message.destroy!(id)
   {id: id}.to_json
 end
 

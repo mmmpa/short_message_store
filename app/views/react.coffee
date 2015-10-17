@@ -22,6 +22,7 @@ MainComponent = React.createClass(
     ).fail((data) =>
       @loadMessages(@lastId())
     )
+
   moveReplies: (message)->
     $.ajax(
       url: "replies/#{message.id}",
@@ -33,6 +34,7 @@ MainComponent = React.createClass(
         @insert(reply)
       )
     ).fail((data) ->)
+
   loadMessages: (from)->
     data = if from?
       { from: from }
@@ -46,6 +48,7 @@ MainComponent = React.createClass(
     ).done((data) =>
       @addNewMessages(data)
     ).fail((data) ->)
+
   deleteMessage: (message)->
     id = message.id
     $.ajax(
@@ -57,10 +60,13 @@ MainComponent = React.createClass(
     ).done((data) =>
       @reject(data)
     ).fail((data) ->)
+
   editMessage: (message)->
     @setState(mode: { mode: 'edit', id: message.id }, message: message.message)
+
   replyMessage: (message)->
     @setState(mode: { mode: 'reply', id: message.id })
+
   insert: (message)->
     now = @state.messages
     targetIndex = _.findIndex(now, (target)->
@@ -68,10 +74,12 @@ MainComponent = React.createClass(
     )
     now = _.slice(now, 0, targetIndex).concat(message).concat(_.slice(now, targetIndex))
     @setState(messages: now)
+
   reject: (message)->
     @setState(messages: _.reject(@state.messages, (obj)->
       obj.id == message.id
     ))
+
   detectPostParameter: (message, mode = {})->
     switch mode.mode
       when 'edit'
@@ -80,25 +88,31 @@ MainComponent = React.createClass(
         ['/messages/new', { message: message, reply_to: mode.id }]
       else
         ['/messages/new', { message: message }]
+
   addNewMessages: (messages)->
-    console.log messages
     @setState(messages: messages.reverse().concat(@state.messages))
+
   lastId: ->
     @state.messages[0]?.id
+
   lastScore: ->
     @state.messages[0]?.score
+
   componentDidMount: ()->
     @loadMessages()
+
   app: ()->
     deleteMessage: @deleteMessage
     editMessage: @editMessage
     loadMessages: @loadMessages
     postMessage: @postMessage
     replyMessage: @replyMessage
+
   getInitialState: ()->
     messages: []
     message: ''
     replies: {}
+
   render: () ->
     CE('div', { className: "short-message-store" },
       CE(MessageFormComponent, { app: @app(), mode: @state.mode, message: @state.message }),
@@ -120,17 +134,21 @@ MessageComponent = React.createClass(
   edit: (e)->
     e.preventDefault()
     @props.app.editMessage(@props.message)
+
   delete: (e)->
     e.preventDefault()
     @props.app.deleteMessage(@props.message)
+
   reply: (e)->
     e.preventDefault()
     @props.app.replyMessage(@props.message)
+
   writeHeader: ()->
     if @props.message.reply_to && @props.message.reply_to != ''
       '▲' + @props.message.written_at
     else
       @props.message.written_at
+
   render: () ->
     CE('li', { className: "message-list message" },
       CE('time', { className: "message-list time" }, @writeHeader()),
@@ -159,17 +177,22 @@ MessageFormComponent = React.createClass(
   onClick: (e)->
     e.preventDefault()
     @props.app.postMessage(@state.message, @props.mode)
+
   modeText: ()->
     if @props.mode
       "#{@props.mode.mode}:#{@props.mode.id}"
     else
       'new message'
+
   statize: (e)->
     @setState(message: e.target.value)
+
   componentWillReceiveProps: (props)->
     @setState(message: props.message)
+
   getInitialState: ()->
     message: ''
+
   render: () ->
     CE('form', { className: "message-box form" },
       CE('div', { className: "control-group" },

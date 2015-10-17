@@ -28,7 +28,7 @@ namespace :sweeper do
   def mailer
     @stored_mailer ||= Mail.new do
       from from_address
-      to hatena_address
+      to to_address
       subject title
       body rendered
     end
@@ -76,7 +76,7 @@ namespace :sweeper do
     ENV['FROM_ADDRESS']
   end
 
-  def hatena_address
-    ENV['HATENA_ADDRESS_FOR_ENTRY']
+  def to_address
+    [ENV['TO_ADDRESS'], ENV['FROM_ADDRESS']]
   end
 end
