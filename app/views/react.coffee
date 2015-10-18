@@ -80,6 +80,17 @@ MainComponent = React.createClass(
       @reject(data)
     ).fail((data) ->)
 
+  sendMailNow: ()->
+    $.ajax(
+      url: "/letters/new",
+      type: 'post',
+      dataType: 'json'
+    ).done((data) =>
+      console.log(data)
+    ).fail((data) ->
+      alert('送信失敗')
+    )
+
   disposeMessage: ()->
     @setState(mode: null, message: '')
 
@@ -137,6 +148,7 @@ MainComponent = React.createClass(
     loadMessages: @loadMessages
     postMessage: @postMessage
     replyMessage: @replyMessage
+    sendMailNow: @sendMailNow
     formState: @state.formState
 
   getInitialState: ()->
@@ -181,6 +193,7 @@ MessageComponent = React.createClass(
     if @props.message.reply_to && @props.message.reply_to != ''
       [
         CE(Fa, { icon: 'reply' })
+        ' '
         @props.message.written_at
       ]
     else
@@ -218,6 +231,10 @@ MessageFormComponent = React.createClass(
   yap: (e)->
     e.preventDefault()
     @props.app.postMessage(@state.message, @props.mode)
+
+  sendMailNow: (e)->
+    e.preventDefault()
+    @props.app.sendMailNow()
 
   modeText: ()->
     if @props.mode
@@ -298,6 +315,11 @@ MessageFormComponent = React.createClass(
           },
           @detectButtonMessage()
         )
+      )
+      CE('div', { className: "message-box send-area" },
+        CE('a', { href:'#', onClick: @sendMailNow },
+          CE(Fa, { icon: 'send-o' }),
+          ' Send Mail Now!')
       )
     )
 )

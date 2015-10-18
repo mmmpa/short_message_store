@@ -6,6 +6,7 @@ require 'redis-objects'
 require 'dotenv'
 require 'active_support'
 require 'active_support/core_ext'
+require 'mail'
 require 'sinatra'
 require 'sinatra/cookies'
 require 'sinatra/reloader' if development?

@@ -10,6 +10,11 @@ get '/messages/index' do
   end
 end
 
+post '/letters/new' do
+  Mailer.new(letter: WriteLetter.()).send_mail
+  {state: 'done'}.to_json
+end
+
 post '/messages/new' do
   Message.new(message_params).save!.to_json
 end
