@@ -1,13 +1,23 @@
 CE = React.createElement
 
+FormStatus = {
+  READY: 'ready'
+  WAIT: 'input'
+  AWAKE: 'awake'
+}
+
 MainComponent = React.createClass(
   postMessage: (message, mode)->
     [url, data] = @detectPostParameter(message, mode)
+    timer_id = @lock()
+
     $.ajax(
       url: url
       type: 'post'
       dataType: 'json'
       data: data
+    ).then((data)=>
+      @unlock(timer_id)
     ).then((data) =>
       switch mode?.mode
         when 'edit'
@@ -20,8 +30,19 @@ MainComponent = React.createClass(
           @loadMessages(@lastId())
       @setState(mode: null, message: '')
     ).fail((data) =>
+      @unlock(timer_id)
       @loadMessages(@lastId())
     )
+
+  lock: ()->
+    @setState(formState: FormStatus.WAIT)
+    timer = setTimeout(()=>
+      @setState(formState: FormStatus.AWAKE)
+    , 2000)
+
+  unlock: (timer_id)->
+    clearTimeout(timer_id)
+    @setState(formState: FormStatus.READY)
 
   moveReplies: (message)->
     $.ajax(
@@ -118,11 +139,13 @@ MainComponent = React.createClass(
     loadMessages: @loadMessages
     postMessage: @postMessage
     replyMessage: @replyMessage
+    formState: @state.formState
 
   getInitialState: ()->
     messages: []
     message: ''
     replies: {}
+    formState: FormStatus.READY
 
   render: () ->
     CE('div', { className: "short-message-store" },
@@ -186,36 +209,14 @@ MessageComponent = React.createClass(
     )
 )
 
-FormStatus = {
-  READY: 'ready'
-  WAIT: 'input'
-  AWAKE: 'awake'
-}
-
 MessageFormComponent = React.createClass(
   dispose: (e)->
     e.preventDefault()
     @props.app.disposeMessage()
+
   yap: (e)->
     e.preventDefault()
-    timer_id = @startYap()
-    @props.app.postMessage(
-      @state.message, @props.mode
-    ).done(()=>
-      @finishYap(timer_id)
-    ).fail(() =>
-      @finishYap(timer_id)
-    )
-
-  startYap: ()->
-    @setState(yapable: false, postState: FormStatus.WAIT)
-    timer = setTimeout(()=>
-      @setState(postState: FormStatus.AWAKE)
-    , 2000)
-
-  finishYap: (timer_id)->
-    clearTimeout(timer_id)
-    @setState(yapable: true, postState: FormStatus.READY)
+    @props.app.postMessage(@state.message, @props.mode)
 
   modeText: ()->
     if @props.mode
@@ -244,11 +245,9 @@ MessageFormComponent = React.createClass(
 
   getInitialState: ()->
     message: ''
-    yapable: true
-    postState: FormStatus.READY
 
   detectButtonMessage: ()->
-    switch @state.postState
+    switch @props.app.formState
       when FormStatus.READY
         [
           CE(Fa, { icon: 'paw' })
@@ -264,6 +263,9 @@ MessageFormComponent = React.createClass(
           CE(Fa, { icon: 'spinner', animation: 'pulse' })
           ' Awaking Heroku...'
         ]
+
+  isYappable: ()->
+    @props.app.formState == FormStatus.READY
 
   render: () ->
     CE('form', { className: "message-box form" },
@@ -291,7 +293,7 @@ MessageFormComponent = React.createClass(
         CE('button', {
             className: "btn btn-primary btn-lg message-box submit",
             onClick: @yap,
-            disabled: !@state.yapable
+            disabled: !@isYappable()
           },
           @detectButtonMessage()
         )
