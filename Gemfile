@@ -1,5 +1,7 @@
 source 'https://rubygems.org'
 
+ruby '2.2.2'
+
 gem 'dotenv-rails'
 gem 'redis-objects'
 gem 'redis-namespace'
