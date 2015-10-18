@@ -11,6 +11,7 @@ get '/messages/index' do
 end
 
 post '/messages/new' do
+  sleep 1
   Message.new(message_params).save!.to_json
 end
 

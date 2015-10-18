@@ -61,6 +61,9 @@ MainComponent = React.createClass(
       @reject(data)
     ).fail((data) ->)
 
+  disposeMessage: ()->
+    @setState(mode: null, message: '')
+
   editMessage: (message)->
     @setState(mode: { mode: 'edit', id: message.id }, message: message.message)
 
@@ -75,7 +78,7 @@ MainComponent = React.createClass(
     switch
       when targetIndex == 0
         now.unshift(message)
-      when targetIndex == - 1
+      when targetIndex == -1
         now.push(message)
       else
         now = _.slice(now, 0, targetIndex).concat(message).concat(_.slice(now, targetIndex))
@@ -110,6 +113,7 @@ MainComponent = React.createClass(
 
   app: ()->
     deleteMessage: @deleteMessage
+    disposeMessage: @disposeMessage
     editMessage: @editMessage
     loadMessages: @loadMessages
     postMessage: @postMessage
@@ -141,7 +145,7 @@ MessageComponent = React.createClass(
   edit: (e)->
     e.preventDefault()
     @props.app.editMessage(@props.message)
-    window.scroll(0,0)
+    window.scroll(0, 0)
 
   delete: (e)->
     e.preventDefault()
@@ -150,7 +154,7 @@ MessageComponent = React.createClass(
   reply: (e)->
     e.preventDefault()
     @props.app.replyMessage(@props.message)
-    window.scroll(0,0)
+    window.scroll(0, 0)
 
   writeHeader: ()->
     if @props.message.reply_to && @props.message.reply_to != ''
@@ -182,10 +186,36 @@ MessageComponent = React.createClass(
     )
 )
 
+FormStatus = {
+  READY: 'ready'
+  WAIT: 'input'
+  AWAKE: 'awake'
+}
+
 MessageFormComponent = React.createClass(
-  onClick: (e)->
+  dispose: (e)->
     e.preventDefault()
-    @props.app.postMessage(@state.message, @props.mode)
+    @props.app.disposeMessage()
+  yap: (e)->
+    e.preventDefault()
+    timer_id = @startYap()
+    @props.app.postMessage(
+      @state.message, @props.mode
+    ).done(()=>
+      @finishYap(timer_id)
+    ).fail(() =>
+      @finishYap(timer_id)
+    )
+
+  startYap: ()->
+    @setState(yapable: false, postState: FormStatus.WAIT)
+    timer = setTimeout(()=>
+      @setState(postState: FormStatus.AWAKE)
+    , 2000)
+
+  finishYap: (timer_id)->
+    clearTimeout(timer_id)
+    @setState(yapable: true, postState: FormStatus.READY)
 
   modeText: ()->
     if @props.mode
@@ -210,15 +240,46 @@ MessageFormComponent = React.createClass(
   componentDidMount: ->
     @cm = CodeMirror.fromTextArea(@refs.messageArea.getDOMNode(), @codeMirrorConfig())
     @cm.on('change', @statize)
-    @cm.setSize('100%','100%')
+    @cm.setSize('100%', '100%')
 
   getInitialState: ()->
     message: ''
+    yapable: true
+    postState: FormStatus.READY
+
+  detectButtonMessage: ()->
+    switch @state.postState
+      when FormStatus.READY
+        [
+          CE(Fa, { icon: 'paw' })
+          ' Yap!'
+        ]
+      when FormStatus.WAIT
+        [
+          CE(Fa, { icon: 'spinner', animation: 'pulse' })
+          ' Sending...'
+        ]
+      when FormStatus.AWAKE
+        [
+          CE(Fa, { icon: 'spinner', animation: 'pulse' })
+          ' Awaking Heroku...'
+        ]
 
   render: () ->
     CE('form', { className: "message-box form" },
-      CE('div', { className: "control-group" },
-        CE('input', { className: "form-control message-box mode", ref: 'mode', disabled: true, value: @modeText() })
+      CE('div', { className: "control-group message-box mode-area" },
+        CE('input', {
+          className: "form-control message-box mode",
+          ref: 'mode',
+          disabled: true,
+          value: @modeText()
+        }),
+        CE('button', {
+            className: "btn btn-danger message-box cancel",
+            onClick: @dispose
+          },
+          CE(Fa, { icon: 'trash-o' })
+        )
       ),
       CE('div', { className: "control-group" },
         CE('textarea', {
@@ -227,8 +288,12 @@ MessageFormComponent = React.createClass(
         })
       ),
       CE('div', { className: "message-box submit-area" },
-        CE('button', { className: "btn btn-primary btn-lg message-box submit", onClick: @onClick },
-          "Yap!"
+        CE('button', {
+            className: "btn btn-primary btn-lg message-box submit",
+            onClick: @yap,
+            disabled: !@state.yapable
+          },
+          @detectButtonMessage()
         )
       )
     )
