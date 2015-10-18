@@ -10,15 +10,13 @@ MainComponent = React.createClass(
   postMessage: (message, mode)->
     [url, data] = @detectPostParameter(message, mode)
     timer_id = @lock()
-
     $.ajax(
       url: url
       type: 'post'
       dataType: 'json'
       data: data
-    ).then((data)=>
-      @unlock(timer_id)
     ).then((data) =>
+      @unlock(timer_id)
       switch mode?.mode
         when 'edit'
           @reject(data)
@@ -181,7 +179,10 @@ MessageComponent = React.createClass(
 
   writeHeader: ()->
     if @props.message.reply_to && @props.message.reply_to != ''
-      '▲' + @props.message.written_at
+      [
+        CE(Fa, { icon: 'reply' })
+        @props.message.written_at
+      ]
     else
       @props.message.written_at
 
