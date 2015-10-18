@@ -47,6 +47,8 @@ GEM
     json (1.8.3)
     loofah (2.0.3)
       nokogiri (>= 1.5.9)
+    mail (2.6.3)
+      mime-types (>= 1.16, < 3)
     mime-types (2.6.2)
     mini_portile (0.6.2)
     minitest (5.8.1)
@@ -143,6 +145,7 @@ DEPENDENCIES
   coffee-script
   dotenv-rails
   faker
+  mail
   poltergeist
   puma
   rack

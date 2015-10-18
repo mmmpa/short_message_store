@@ -7,6 +7,7 @@ gem 'coffee-script'
 gem 'sass'
 gem 'slim'
 gem 'puma'
+gem 'mail'
 
 gem 'rspec'
 gem 'rspec-html-matchers'
