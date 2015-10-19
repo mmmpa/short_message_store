@@ -4,19 +4,18 @@ class Mailer
   end
 
   def send_mail
-    mailer.delivery_method(:smtp, mailer_config)
-    mailer.deliver!
+    new_mailer = mailer
+    new_mailer.delivery_method(:smtp, mailer_config)
+    new_mailer.deliver!
   end
 
   def mailer
-    @stored_mailer ||= begin
-      new_mailer = Mail.new
-      new_mailer.from = from_address
-      new_mailer.to = to_address
-      new_mailer.subject = title
-      new_mailer.body = @body
-      new_mailer
-    end
+    new_mailer = Mail.new
+    new_mailer.from = from_address
+    new_mailer.to = to_address
+    new_mailer.subject = title
+    new_mailer.body = @body
+    new_mailer
   end
 
   def mailer_config

@@ -15,7 +15,7 @@ class WriteLetter
     end
 
     def messages
-      @stored_messages ||= Message.all
+      Message.all
     end
 
     def message_size
