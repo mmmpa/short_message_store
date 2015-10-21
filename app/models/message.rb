@@ -1,7 +1,7 @@
 class Message
   include Redis::Objects
 
-  ATTRIBUTES = [:message, :written_at, :reply_to, :length]
+  ATTRIBUTES = [:message, :written_at, :reply_to, :range]
 
   attr_accessor *ATTRIBUTES
   hash_key :message_set
@@ -67,7 +67,7 @@ class Message
     def reply_ids(id)
       parent = find(id)
       base = message_store[id]
-      edge = message_store[id] - parent.length.to_f
+      edge = message_store[id] - parent.range.to_f
       message_store.rangebyscore("(#{edge}", "(#{base}")
     rescue NotFound
       []
@@ -107,7 +107,7 @@ class Message
       #左端
       base = message_store[id]
       #右端
-      edge = message_store[id] - find(id).length.to_f
+      edge = message_store[id] - find(id).range.to_f
 
       #右端か右端より左にあるスコア
       next_score = [edge, next_score(id)].max
@@ -130,10 +130,11 @@ class Message
     def store(message)
       if message.reply_to.present? && reply_target_exist?(message.reply_to)
         message_store[message.id] = score_for_reply_to(message.reply_to)
-        message.length = (message_store[message.id] - next_score(message.id))
+        message.range = (message_store[message.id] - next_score(message.id))
       else
-        message.reply_to = nil
         children = replies(message.id)
+        message.reply_to = nil
+        message.range = 1
 
         if children.present?
           old_score = message_store[message.id]
@@ -142,10 +143,8 @@ class Message
           children.each do |reply|
             message_store.increment(reply.id, plus)
           end
-          message.length = 1
         else
           message_store[message.id] = generate_score!
-          message.length = 1
         end
       end
     end
