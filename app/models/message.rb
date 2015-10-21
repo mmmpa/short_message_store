@@ -1,7 +1,7 @@
 class Message
   include Redis::Objects
 
-  ATTRIBUTES = [:message, :fail_message, :written_at, :reply_to]
+  ATTRIBUTES = [:message, :written_at, :reply_to, :edge]
 
   attr_accessor *ATTRIBUTES
   hash_key :message_set
@@ -46,19 +46,12 @@ class Message
 
     def replies(id)
       # 自分から次の親までのidを取得し、自分と次の親は削除する
-      result = between_next_parent_and(id)
-      result.delete(id)
-      result.delete(next_parent_id(id))
-
-      # 自分に対するreplyと、取得した子に対するreplyのみにする
-      reply_targets = Set.new([id])
-      result.inject([]) do |a, result_id|
-        target = find(result_id)
-        return a unless reply_targets.include?(target.reply_to)
-
-        reply_targets << target.id
-        a << target
-      end
+      parent = find(id)
+      message_store.rangebyscore(parent.edge.to_f, message_store[id]).tap { |ids|
+        ids.delete(id)
+      }.map(&method(:find))
+    rescue NotFound
+      []
     end
 
     #
@@ -101,16 +94,24 @@ class Message
       message_store[id].ceil - 1
     end
 
+    def next_score(id)
+      rank = message_store.rank(id)
+      next_id = if rank == 0
+                  0
+                else
+                  message_store[rank - 1, 1].first
+                end
+      message_store[next_id]
+    end
+
     def score_for_reply_to(id)
+      #左端
       base = message_store[id]
-      my_rank = message_store.rank(id)
-      #最大でも1に抑える
-      next_score = if my_rank == 0
-                     next_parent_score(id)
-                   else
-                     next_id = message_store[my_rank - 1, 1].first
-                     [next_parent_score(id), message_store[next_id]].max
-                   end
+      #右端
+      edge = find(id).edge
+
+      #右端か右端より左にあるスコア
+      next_score = [edge.to_f, next_score(id)].max
 
       (base + next_score) / 2
     end
@@ -129,12 +130,8 @@ class Message
 
     def store(message)
       if message.reply_to.present? && reply_target_exist?(message.reply_to)
-        children = replies(message.id)
         message_store[message.id] = score_for_reply_to(message.reply_to)
-
-        children.each do |target|
-          message_store[target.id] = score_for_reply_to(target.reply_to)
-        end
+        message.edge = next_score(message.id) + 0.001
       else
         message.reply_to = nil
         children = replies(message.id)
@@ -146,8 +143,10 @@ class Message
           children.each do |reply|
             message_store.increment(reply.id, plus)
           end
+          message.edge = new_score - 0.999
         else
-          message_store[message.id] = generate_score!
+          new_score = message_store[message.id] = generate_score!
+          message.edge = new_score - 0.999
         end
       end
     end
