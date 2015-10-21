@@ -97,6 +97,25 @@ RSpec.describe Message, type: :model do
     end
   end
 
+  describe 'Edit message with reply' do
+    let!(:a) { Message.new(message: raw_message).save! }
+    let!(:a1) { Message.new(message: raw_message, reply_to: a.id).save! }
+    let!(:a2) { Message.new(message: raw_message, reply_to: a.id).save! }
+    let!(:a1_1) { Message.new(message: raw_message, reply_to: a1.id).save! }
+    let!(:a1_2) { Message.new(message: raw_message, reply_to: a1.id).save! }
+
+    context 'when no edit' do
+      it { expect(ids).to eq([a.id, a2.id, a1.id, a1_2.id, a1_1.id]) }
+    end
+
+    context 'when edit' do
+      it do
+        a1.update!
+        expect(ids).to eq([a.id, a1.id, a1_2.id, a1_1.id, a2.id])
+      end
+    end
+  end
+
   describe 'Edit' do
     let!(:a) { Message.new(message: raw_message).save! }
     let!(:b) { Message.new(message: raw_message).save! }

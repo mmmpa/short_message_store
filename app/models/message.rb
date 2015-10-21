@@ -129,8 +129,12 @@ class Message
 
     def store(message)
       if message.reply_to.present? && reply_target_exist?(message.reply_to)
+        children = replies(message.id)
         message_store[message.id] = score_for_reply_to(message.reply_to)
         message.range = (message_store[message.id] - next_score(message.id))
+        children.each do |reply|
+          store(reply)
+        end
       else
         children = replies(message.id)
         message.reply_to = nil
